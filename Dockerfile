@@ -7,14 +7,13 @@ FROM ${GO_IMAGE} as builder
 ARG TAG="" 
 RUN apt update     && \ 
     apt upgrade -y && \ 
-    apt install -y ca-certificates git libseccomp-dev
+    apt install -y ca-certificates git libseccomp-dev policycoreutils selinux-utils selinux-basics
 
 RUN git clone --depth=1 https://github.com/opencontainers/runc.git $GOPATH/src/github.com/opencontainers/runc && \
     cd $GOPATH/src/github.com/opencontainers/runc                                                             && \
-    git fetch --all --tags --prune     && \
-    git checkout tags/${TAG} -b ${TAG} && \
-    make static                                                                                               && \
-    make install
+    git fetch --all --tags --prune                                                                            && \
+    git checkout tags/${TAG} -b ${TAG}                                                                        && \
+    BUILDTAGS='seccomp selinux apparmor' make static
 
 FROM ubi
 RUN microdnf update -y && \ 
