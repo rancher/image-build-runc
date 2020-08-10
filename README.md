@@ -1,4 +1,4 @@
-# ranchertest/runc
+# rancher/runc
 
 ## Build
 
