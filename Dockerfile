@@ -1,22 +1,31 @@
 ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
-ARG GO_IMAGE=rancher/hardened-build-base:v1.14.2-amd64
-
+ARG GO_IMAGE=rancher/hardened-build-base:v1.15.2b5
 FROM ${UBI_IMAGE} as ubi
-
 FROM ${GO_IMAGE} as builder
-ARG TAG="" 
-RUN apt update     && \ 
-    apt upgrade -y && \ 
-    apt install -y ca-certificates git libseccomp-dev policycoreutils selinux-utils selinux-basics
-
-RUN git clone --depth=1 https://github.com/opencontainers/runc.git $GOPATH/src/github.com/opencontainers/runc && \
-    cd $GOPATH/src/github.com/opencontainers/runc                                                             && \
-    git fetch --all --tags --prune                                                                            && \
-    git checkout tags/${TAG} -b ${TAG}                                                                        && \
-    BUILDTAGS='seccomp selinux apparmor' make static
+# setup required packages
+RUN set -x \
+ && apk --no-cache add \
+    file \
+    gcc \
+    git \
+    libselinux-dev \
+    libseccomp-dev \
+    make
+# setup the build
+ARG PKG="github.com/opencontainers/runc"
+ARG SRC="github.com/opencontainers/runc"
+ARG TAG="v1.0.0-rc92"
+RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
+WORKDIR $GOPATH/src/${PKG}
+RUN git fetch --all --tags --prune
+RUN git checkout tags/${TAG} -b ${TAG}
+RUN BUILDTAGS='seccomp selinux apparmor' make static
+RUN go-assert-static.sh runc
+RUN go-assert-boring.sh runc
+RUN install -s runc /usr/local/bin
+RUN runc --version
 
 FROM ubi
-RUN microdnf update -y && \ 
+RUN microdnf update -y && \
     rm -rf /var/cache/yum
-
-COPY --from=builder /go/src/github.com/opencontainers/runc/runc /usr/local/bin
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
