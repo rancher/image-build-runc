@@ -10,6 +10,7 @@ RUN set -x \
     git \
     libselinux-dev \
     libseccomp-dev \
+    libseccomp-static \
     make
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
