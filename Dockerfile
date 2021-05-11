@@ -1,5 +1,5 @@
 ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
-ARG GO_IMAGE=rancher/hardened-build-base:v1.15.8b5
+ARG GO_IMAGE=rancher/hardened-build-base:v1.16.4b7
 FROM ${UBI_IMAGE} as ubi
 FROM ${GO_IMAGE} as builder
 # setup required packages
@@ -15,7 +15,7 @@ RUN set -x \
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
 ARG SRC="github.com/opencontainers/runc"
-ARG TAG="v1.0.0-rc92"
+ARG TAG="v1.0.0-rc94"
 RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
