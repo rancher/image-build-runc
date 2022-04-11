@@ -1,10 +1,10 @@
-ARG UBI_IMAGE=registry.access.redhat.com/ubi7/ubi-minimal:latest
+ARG BCI_IMAGE=registry.suse.com/bci/bci-base:latest
 ARG GO_IMAGE=rancher/hardened-build-base:v1.16.10b7
-FROM ${UBI_IMAGE} as ubi
+FROM ${BCI_IMAGE} as bci
 FROM ${GO_IMAGE} as builder
 # setup required packages
-RUN set -x \
- && apk --no-cache add \
+RUN set -x && \
+    apk --no-cache add \
     file \
     gcc \
     git \
@@ -24,12 +24,12 @@ RUN git checkout tags/${TAG} -b ${TAG}
 RUN BUILDTAGS='seccomp selinux apparmor' make static
 RUN go-assert-static.sh runc
 RUN if [ "${ARCH}" != "s390x" ]; then \
-    	go-assert-boring.sh runc; \
+    go-assert-boring.sh runc; \
     fi
 RUN install -s runc /usr/local/bin
 RUN runc --version
 
-FROM ubi
-RUN microdnf update -y && \
-    rm -rf /var/cache/yum
+FROM bci
+RUN zypper update -y && \
+    zypper clean --all
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
