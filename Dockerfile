@@ -1,5 +1,5 @@
 ARG BCI_IMAGE=registry.suse.com/bci/bci-base:15.3.17.20.12
-ARG GO_IMAGE=rancher/hardened-build-base:v1.16.10b7
+ARG GO_IMAGE=rancher/hardened-build-base:v1.20.3b1
 FROM ${BCI_IMAGE} as bci
 FROM ${GO_IMAGE} as builder
 # setup required packages
@@ -15,13 +15,13 @@ RUN set -x \
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
 ARG SRC="github.com/opencontainers/runc"
-ARG TAG="v1.0.2"
+ARG TAG="v1.1.5"
 ARG ARCH="amd64"
 RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
-RUN BUILDTAGS='seccomp selinux apparmor' make static
+RUN BUILDTAGS='seccomp selinux apparmor' GOEXPERIMENT='boringcrypto' make static
 RUN go-assert-static.sh runc
 RUN if [ "${ARCH}" != "s390x" ]; then \
     	go-assert-boring.sh runc; \
