@@ -1,10 +1,10 @@
-ARG BCI_IMAGE=registry.suse.com/bci/bci-base:15.3.17.20.12
-ARG GO_IMAGE=rancher/hardened-build-base:v1.20.3b1
+ARG BCI_IMAGE=registry.suse.com/bci/bci-base
+ARG GO_IMAGE=rancher/hardened-build-base:v1.20.4b11
 FROM ${BCI_IMAGE} as bci
 FROM ${GO_IMAGE} as builder
 # setup required packages
-RUN set -x \
- && apk --no-cache add \
+RUN set -x && \
+    apk --no-cache add \
     file \
     gcc \
     git \
@@ -23,7 +23,7 @@ RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
 RUN BUILDTAGS='seccomp selinux apparmor' GOEXPERIMENT='boringcrypto' make static
 RUN go-assert-static.sh runc
-RUN if [ "${ARCH}" != "s390x" ]; then \
+RUN if [ "${ARCH}" != "s390x" || "${ARCH}" != "arm64" ]; then \
     	go-assert-boring.sh runc; \
     fi
 RUN install -s runc /usr/local/bin
