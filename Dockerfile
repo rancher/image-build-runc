@@ -23,7 +23,7 @@ RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
 RUN BUILDTAGS='seccomp selinux apparmor' GOEXPERIMENT='boringcrypto' make static
 RUN go-assert-static.sh runc
-RUN if [ "${ARCH}" != "s390x" || "${ARCH}" != "arm64" ]; then \
+RUN if [ "${ARCH}" = "amd64" ]; \
     	go-assert-boring.sh runc; \
     fi
 RUN install -s runc /usr/local/bin
