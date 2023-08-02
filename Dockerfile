@@ -1,5 +1,5 @@
 ARG BCI_IMAGE=registry.suse.com/bci/bci-base
-ARG GO_IMAGE=rancher/hardened-build-base:v1.20.4b11
+ARG GO_IMAGE=rancher/hardened-build-base:v1.20.7b3
 FROM ${BCI_IMAGE} as bci
 FROM ${GO_IMAGE} as builder
 # setup required packages
@@ -15,7 +15,7 @@ RUN set -x && \
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
 ARG SRC="github.com/opencontainers/runc"
-ARG TAG="v1.1.5"
+ARG TAG="v1.1.8"
 ARG ARCH="amd64"
 RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
