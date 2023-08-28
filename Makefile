@@ -50,4 +50,4 @@ image-manifest:
 
 .PHONY: image-scan
 image-scan:
-	trivy --severity $(SEVERITIES) --no-progress --ignore-unfixed $(ORG)/hardened-runc:$(TAG)
+	trivy image --severity $(SEVERITIES) --no-progress --ignore-unfixed $(ORG)/hardened-runc:$(TAG)
