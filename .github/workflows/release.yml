@@ -19,5 +19,5 @@ jobs:
       run: make GH_TAG=${{ github.ref_name }}
     - name: Scan
       run: make GH_TAG=${{ github.ref_name }} image-scan
-    - name: publish
+    - name: Publish
       run: make GH_TAG=${{ github.ref_name }} image-push

@@ -16,6 +16,10 @@ PKG ?= github.com/opencontainers/runc
 SRC ?= github.com/opencontainers/runc
 TAG ?= v1.1.8$(BUILD_META)
 
+ifneq ($(DRONE_TAG),)
+	TAG := $(DRONE_TAG)
+endif
+
 ifneq ($(GH_TAG),)
 	TAG := $(GH_TAG)
 endif
