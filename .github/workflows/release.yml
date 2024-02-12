@@ -9,10 +9,14 @@ jobs:
     container: rancher/hardened-build-base:v1.21.7b1
     steps:
     - name: Docker Hub Login
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: refs/tags/${{ github.ref_name }}
     - name: Build
       run: make GH_TAG=${{ github.ref_name }}
     - name: Scan
