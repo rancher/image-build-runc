@@ -4,22 +4,42 @@ on:
     tags:
       - "v*"
 jobs:
-  release:
+  linux-amd64:
+    name: Build and Push Linux AMD64
+    env:
+      TAG: ${GITHUB_REF_NAME}
+      REPOSITORY_OWNER: ${{github.repository_owner}}
     runs-on: ubuntu-latest
     container: rancher/hardened-build-base:v1.21.7b1
     steps:
-    - name: Docker Hub Login
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        ref: refs/tags/${{ github.ref_name }}
-    - name: Build
-      run: make GH_TAG=${{ github.ref_name }}
-    - name: Scan
-      run: make GH_TAG=${{ github.ref_name }} image-scan
-    - name: Publish
-      run: make GH_TAG=${{ github.ref_name }} image-push
+      - name: Docker Hub Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{github.ref}}
+      - name: Build
+        run: make GH_TAG=${{ github.ref_name }}
+      - name: Scan
+        run: make GH_TAG=${{ github.ref_name }} image-scan
+      - name: Publish
+        run: make GH_TAG=${{ github.ref_name }} image-push
+  manifest:
+    name: Docker manifest
+    runs-on: ubuntu-latest
+    needs: linux-amd64
+    steps:
+      - name: Docker Hub Login
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Create manifest
+        run: |
+          docker manifest create ${{github.repository_owner}}/hardened-build-base:${{github.ref_name}} \
+            ${{github.repository_owner}}/hardened-build-base:${{github.ref_name}}-amd64
+      - name: Push manifest
+        run: docker manifest push ${{github.repository_owner}}/hardened-build-base:${{github.ref_name}}
