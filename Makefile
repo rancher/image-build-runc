@@ -20,6 +20,10 @@ ifneq ($(DRONE_TAG),)
 	TAG := $(DRONE_TAG)
 endif
 
+ifneq ($(GH_TAG),)
+	TAG := $(GH_TAG)
+endif
+
 ifeq (,$(filter %$(BUILD_META),$(TAG)))
 	$(error TAG needs to end with build metadata: $(BUILD_META))
 endif
