@@ -16,7 +16,7 @@ jobs:
       uses: docker/setup-qemu-action@v3
 
     - name: "Read secrets"
-      uses: husseingalal-eio/read-vault-secrets@main
+      uses: rancher-eio/read-vault-secrets@main
       with:
         secrets: |
           secret/data/github/repo/${{ github.repository }}/dockerhub/${{ github.repository_owner }}/credentials username | DOCKER_USERNAME ;
@@ -35,6 +35,6 @@ jobs:
       with:
         context: .
         push: true
-        tags: husseingalal/hardened-runc:${{ github.event.release.tag_name }}
+        tags: rancher/hardened-runc:${{ github.event.release.tag_name }}
         file: Dockerfile
         platforms: linux/amd64, linux/arm64
