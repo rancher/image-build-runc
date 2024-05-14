@@ -24,8 +24,14 @@ jobs:
         tags: husseingalal/hardened-runc:${{ env.TAG }}-amd64
         file: Dockerfile
 
+    # the CVE is not fixed in runc itself
+    - name: Ignore CVE-2023-39325in trivy
+      run: |
+        echo "CVE-2023-39325" >> .trivyignore
+    
+
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@v0.20.0
       with:
         image-ref: husseingalal/hardened-runc:${{ env.TAG }}-amd64
         format: 'table'
@@ -33,6 +39,7 @@ jobs:
         ignore-unfixed: true
         vuln-type: 'os,library'
         severity: 'CRITICAL,HIGH'
+        trivyignores: '.trivyignore'
 
   build-arm64:
     runs-on: ubuntu-latest
@@ -59,9 +66,14 @@ jobs:
         file: Dockerfile
         outputs: type=docker
         platforms: linux/arm64
-
+    
+    # the CVE is not fixed in runc itself
+    - name: Ignore CVE-2023-39325in trivy
+      run: |
+        echo "CVE-2023-39325" >> .trivyignore
+    
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@v0.20.0
       with:
         image-ref: husseingalal/hardened-runc:${{ env.TAG }}-arm64
         format: 'table'
@@ -69,3 +81,4 @@ jobs:
         ignore-unfixed: true
         vuln-type: 'os,library'
         severity: 'CRITICAL,HIGH'
+        trivyignores: '.trivyignore'
