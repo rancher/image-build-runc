@@ -14,14 +14,14 @@ RUN set -x && \
 ARG PKG="github.com/opencontainers/runc"
 ARG SRC="github.com/opencontainers/runc"
 ARG TAG="v1.1.12"
-ARG ARCH="amd64"
+ARG TARGETARCH="amd64"
 RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
 RUN BUILDTAGS='seccomp selinux apparmor' GOEXPERIMENT='boringcrypto' make static
 RUN go-assert-static.sh runc
-RUN if [ "${ARCH}" = "amd64" ]; then \
+RUN if [ "${TARGETARCH}" = "amd64" ]; then \
     	go-assert-boring.sh runc; \
     fi
 RUN install -s runc /usr/local/bin

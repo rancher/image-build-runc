@@ -14,10 +14,10 @@ BUILD_META=-build$(shell date +%Y%m%d)
 ORG ?= rancher
 PKG ?= github.com/opencontainers/runc
 SRC ?= github.com/opencontainers/runc
-TAG ?= v1.1.12$(BUILD_META)
+TAG ?= ${GITHUB_ACTION_TAG}
 
-ifneq ($(DRONE_TAG),)
-	TAG := $(DRONE_TAG)
+ifeq ($(TAG),)
+TAG := v1.1.12$(BUILD_META)
 endif
 
 ifeq (,$(filter %$(BUILD_META),$(TAG)))
@@ -47,7 +47,7 @@ image-scan:
 .PHONY: log
 log:
 	@echo "ARCH=$(ARCH)"
-	@echo "TAG=$(TAG)"
+	@echo "TAG=$(TAG:$(BUILD_META)=)"
 	@echo "ORG=$(ORG)"
 	@echo "PKG=$(PKG)"
 	@echo "SRC=$(SRC)"
