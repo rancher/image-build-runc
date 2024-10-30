@@ -28,4 +28,6 @@ RUN install -s runc /usr/local/bin
 RUN runc --version
 
 FROM scratch
+LABEL org.opencontainers.image.url="https://hub.docker.com/r/rancher/hardened-runc"
+LABEL org.opencontainers.image.source="https://github.com/rancher/image-build-runc"
 COPY --from=builder /usr/local/bin/ /usr/local/bin/
