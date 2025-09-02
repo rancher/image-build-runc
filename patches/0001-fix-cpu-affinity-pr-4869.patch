@@ -1,0 +1,363 @@
+From 197c7fcd9175cd1059ab9766ff6947a9e407f877 Mon Sep 17 00:00:00 2001
+From: Aleksa Sarai <cyphar@cyphar.com>
+Date: Tue, 19 Aug 2025 16:53:03 +1000
+Subject: [PATCH 1/3] [1.2] tests: add sane_run helper
+
+"runc" was a special wrapper around bats's "run" which output some very
+useful diagnostic information to the bats log, but this was not usable
+for other commands. So let's make it a more generic helper that we can
+use for other commands.
+
+Signed-off-by: Aleksa Sarai <cyphar@cyphar.com>
+(Cherry-pick of commit ea385de40c9a006737399bc72918a19e5d038736.)
+Signed-off-by: Aleksa Sarai <cyphar@cyphar.com>
+---
+ tests/integration/helpers.bash | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/tests/integration/helpers.bash b/tests/integration/helpers.bash
+index 85f1fb0a558..1ddf45759d6 100755
+--- a/tests/integration/helpers.bash
++++ b/tests/integration/helpers.bash
+@@ -39,18 +39,27 @@ ARCH=$(uname -m)
+ # Seccomp agent socket.
+ SECCCOMP_AGENT_SOCKET="$BATS_TMPDIR/seccomp-agent.sock"
+ 
+-# Wrapper for runc.
+-function runc() {
+-	run __runc "$@"
++# Wrapper around "run" that logs output to make tests easier to debug.
++function sane_run() {
++	local cmd="$1"
++	local cmdname="${CMDNAME:-$(basename "$cmd")}"
++	shift
++
++	run "$cmd" "$@"
+ 
+ 	# Some debug information to make life easier. bats will only print it if the
+ 	# test failed, in which case the output is useful.
+ 	# shellcheck disable=SC2154
+-	echo "$(basename "$RUNC") $* (status=$status):" >&2
++	echo "$cmdname $* (status=$status)" >&2
+ 	# shellcheck disable=SC2154
+ 	echo "$output" >&2
+ }
+ 
++# Wrapper for runc.
++function runc() {
++	CMDNAME="$(basename "$RUNC")" sane_run __runc "$@"
++}
++
+ # Raw wrapper for runc.
+ function __runc() {
+ 	"$RUNC" ${RUNC_USE_SYSTEMD+--systemd-cgroup} \
+
+From a06ff08ea2588f7e79f0453bd91a9602683cc5b2 Mon Sep 17 00:00:00 2001
+From: Aleksa Sarai <cyphar@cyphar.com>
+Date: Tue, 19 Aug 2025 17:42:24 +1000
+Subject: [PATCH 2/3] [1.2] tests: add RUNC_CMDLINE for tests incompatible with
+ functions
+
+Sometimes we need to run runc through some wrapper (like nohup), but
+because "__runc" and "runc" are bash functions in our test suite this
+doesn't work trivially -- and you cannot just pass "$RUNC" because you
+you need to set --root for rootless tests.
+
+So create a setup_runc_cmdline helper which sets $RUNC_CMDLINE to the
+beginning cmdline used by __runc (and switch __runc to use that).
+
+Signed-off-by: Aleksa Sarai <cyphar@cyphar.com>
+(Cherry-pick of commit d1f6acfab06e6f5eb15b7edfaa704f50907907b1.)
+Signed-off-by: Aleksa Sarai <cyphar@cyphar.com>
+---
+ tests/integration/helpers.bash | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/tests/integration/helpers.bash b/tests/integration/helpers.bash
+index 1ddf45759d6..8a6d68e2bf3 100755
+--- a/tests/integration/helpers.bash
++++ b/tests/integration/helpers.bash
+@@ -60,10 +60,17 @@ function runc() {
+ 	CMDNAME="$(basename "$RUNC")" sane_run __runc "$@"
+ }
+ 
++function setup_runc_cmdline() {
++	RUNC_CMDLINE=("$RUNC")
++	[[ -v RUNC_USE_SYSTEMD ]] && RUNC_CMDLINE+=("--systemd-cgroup")
++	[[ -n "${ROOT:-}" ]] && RUNC_CMDLINE+=("--root" "$ROOT/state")
++	export RUNC_CMDLINE
++}
++
+ # Raw wrapper for runc.
+ function __runc() {
+-	"$RUNC" ${RUNC_USE_SYSTEMD+--systemd-cgroup} \
+-		${ROOT:+--root "$ROOT/state"} "$@"
++	setup_runc_cmdline
++	"${RUNC_CMDLINE[@]}" "$@"
+ }
+ 
+ # Wrapper for runc spec.
+
+From 6983cc7ac141b9041a073d364e224caf5b0fa49b Mon Sep 17 00:00:00 2001
+From: Aleksa Sarai <cyphar@cyphar.com>
+Date: Tue, 19 Aug 2025 06:57:23 +1000
+Subject: [PATCH 3/3] [1.2] libct: reset CPU affinity by default
+
+In certain deployments, it's possible for runc to be spawned by a
+process with a restrictive cpumask (such as from a systemd unit with
+CPUAffinity=... configured) which will be inherited by runc and thus the
+container process by default.
+
+The cpuset cgroup used to reconfigure the cpumask automatically for
+joining processes, but kcommit da019032819a ("sched: Enforce user
+requested affinity") changed this behaviour in Linux 6.2.
+
+The solution is to try to emulate the expected behaviour by resetting
+our cpumask to correspond with the configured cpuset (in the case of
+"runc exec", if the user did not configure an alternative one). Normally
+we would have to parse /proc/stat and /sys/fs/cgroup, but luckily
+sched_setaffinity(2) will transparently convert an all-set cpumask (even
+if it has more entries than the number of CPUs on the system) to the
+correct value for our usecase.
+
+For some reason, in our CI it seems that rootless --systemd-cgroup
+results in the cpuset (presumably temporarily?) being configured such
+that sched_setaffinity(2) will allow the full set of CPUs. For this
+particular case, all we care about is that it is different to the
+original set, so include some special-casing (but we should probably
+investigate this further...).
+
+Reported-by: ningmingxiao <ning.mingxiao@zte.com.cn>
+Reported-by: Martin Sivak <msivak@redhat.com>
+Reported-by: Peter Hunt <pehunt@redhat.com>
+Signed-off-by: Aleksa Sarai <cyphar@cyphar.com>
+(Cherry-pick of commit 121192ade6c55f949d32ba486219e2b1d86898b2.)
+Signed-off-by: Aleksa Sarai <cyphar@cyphar.com>
+---
+ CHANGELOG.md                        |   6 ++
+ libcontainer/process_linux.go       |  46 ++++++++++
+ tests/integration/cpu_affinity.bats | 127 ++++++++++++++++++++++++++++
+ 3 files changed, 179 insertions(+)
+ create mode 100644 tests/integration/cpu_affinity.bats
+
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index e4ce0178aca..10c6f31cf4d 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
+ 
+ ## [Unreleased 1.2.z]
+ 
++### Fixed
++ * Container processes will no longer inherit the CPU affinity of runc by
++   default. Instead, the default CPU affinity of container processes will be
++   the largest set of CPUs permitted by the container's cpuset cgroup and any
++   other system restrictions (such as isolated CPUs). (#4041, #4815, #4858)
++
+ ## [1.2.6] - 2025-03-17
+ 
+ > Hasta la victoria, siempre.
+diff --git a/libcontainer/process_linux.go b/libcontainer/process_linux.go
+index 18a5a2bfbea..8dab3caefa1 100644
+--- a/libcontainer/process_linux.go
++++ b/libcontainer/process_linux.go
+@@ -122,6 +122,46 @@ func (p *setnsProcess) signal(sig os.Signal) error {
+ 	return unix.Kill(p.pid(), s)
+ }
+ 
++// tryResetCPUAffinity tries to reset the CPU affinity of the process
++// identified by pid to include all possible CPUs (notwithstanding cgroup
++// cpuset restrictions and isolated CPUs).
++func tryResetCPUAffinity(pid int) {
++	// When resetting the CPU affinity, we want to match the configured cgroup
++	// cpuset (or the default set of all CPUs, if no cpuset is configured)
++	// rather than some more restrictive affinity we were spawned in (such as
++	// one that may have been inherited from systemd). The cpuset cgroup used
++	// to reconfigure the cpumask automatically for joining processes, but
++	// kcommit da019032819a ("sched: Enforce user requested affinity") changed
++	// this behaviour in Linux 6.2.
++	//
++	// Parsing cpuset.cpus.effective is quite inefficient (and looking at
++	// things like /proc/stat would be wrong for most nested containers), but
++	// luckily sched_setaffinity(2) will implicitly:
++	//
++	//  * Clamp the cpumask so that it matches the current number of CPUs on
++	//    the system.
++	//  * Mask out any CPUs that are not a member of the target task's
++	//    configured cgroup cpuset.
++	//
++	// So we can just pass a very large array of set cpumask bits and the
++	// kernel will silently convert that to the correct value very cheaply.
++
++	// Ideally, we would just set the array to 0xFF...FF. Unfortunately, the
++	// size depends on the architecture. It is also a private newtype, so we
++	// can't use (^0) or generics since those require us to be able to name the
++	// type. However, we can just underflow the zero value instead.
++	// TODO: Once <https://golang.org/cl/698015> is merged, switch to that.
++	cpuset := unix.CPUSet{}
++	for i := range cpuset {
++		cpuset[i]-- // underflow to 0xFF..FF
++	}
++	if err := unix.SchedSetaffinity(pid, &cpuset); err != nil {
++		logrus.WithError(
++			os.NewSyscallError("sched_setaffinity", err),
++		).Warnf("resetting the CPU affinity of pid %d failed -- the container process may inherit runc's CPU affinity", pid)
++	}
++}
++
+ func (p *setnsProcess) start() (retErr error) {
+ 	defer p.comm.closeParent()
+ 
+@@ -184,6 +224,9 @@ func (p *setnsProcess) start() (retErr error) {
+ 			}
+ 		}
+ 	}
++	// Reset the CPU affinity after cgroups are configured to make sure it
++	// matches any configured cpuset.
++	tryResetCPUAffinity(p.pid())
+ 	if p.intelRdtPath != "" {
+ 		// if Intel RDT "resource control" filesystem path exists
+ 		_, err := os.Stat(p.intelRdtPath)
+@@ -578,6 +621,9 @@ func (p *initProcess) start() (retErr error) {
+ 			return fmt.Errorf("unable to apply cgroup configuration: %w", err)
+ 		}
+ 	}
++	// Reset the CPU affinity after cgroups are configured to make sure it
++	// matches any configured cpuset.
++	tryResetCPUAffinity(p.pid())
+ 	if p.intelRdtManager != nil {
+ 		if err := p.intelRdtManager.Apply(p.pid()); err != nil {
+ 			return fmt.Errorf("unable to apply Intel RDT configuration: %w", err)
+diff --git a/tests/integration/cpu_affinity.bats b/tests/integration/cpu_affinity.bats
+new file mode 100644
+index 00000000000..5df65374352
+--- /dev/null
++++ b/tests/integration/cpu_affinity.bats
+@@ -0,0 +1,127 @@
++#!/usr/bin/env bats
++# Exec CPU affinity tests. For more details, see:
++#  - https://github.com/opencontainers/runtime-spec/pull/1253
++
++load helpers
++
++INITIAL_CPU_MASK="$(grep -F Cpus_allowed_list: /proc/self/status | awk '{ print $2 }')"
++
++function setup() {
++	requires smp cgroups_cpuset
++	setup_busybox
++
++	echo "Initial CPU mask: $INITIAL_CPU_MASK" >&2
++	echo "---" >&2
++}
++
++function teardown() {
++	teardown_bundle
++}
++
++function first_cpu() {
++	sed 's/[-,].*//g' </sys/devices/system/cpu/online
++}
++
++@test "runc run [CPU affinity should reset]" {
++	# We need to use RUNC_CMDLINE since taskset requires a proper binary, not a
++	# bash function (which is what runc and __runc are).
++	setup_runc_cmdline
++
++	first="$(first_cpu)"
++
++	# Running without cpuset should result in an affinity for all CPUs.
++	update_config '.process.args = [ "/bin/grep", "-F", "Cpus_allowed_list:", "/proc/self/status" ]'
++	update_config 'del(.linux.resources.cpu)'
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" run ctr
++	[ "$status" -eq 0 ]
++	[[ "$output" != $'Cpus_allowed_list:\t'"$first" ]]
++	[[ "$output" == $'Cpus_allowed_list:\t'"$INITIAL_CPU_MASK" ]]
++}
++
++@test "runc run [CPU affinity should reset to cgroup cpuset]" {
++	[ $EUID -ne 0 ] && requires rootless_cgroup
++	set_cgroups_path
++
++	# We need to use RUNC_CMDLINE since taskset requires a proper binary, not a
++	# bash function (which is what runc and __runc are).
++	setup_runc_cmdline
++
++	first="$(first_cpu)"
++	second="$((first + 1))" # Hacky; might not work in all environments.
++
++	# Running with a cpuset should result in an affinity that matches.
++	update_config '.process.args = [ "/bin/grep", "-F", "Cpus_allowed_list:", "/proc/self/status" ]'
++	update_config '.linux.resources.cpu = {"mems": "0", "cpus": "'"$first-$second"'"}'
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" run ctr
++	[ "$status" -eq 0 ]
++	[[ "$output" != $'Cpus_allowed_list:\t'"$first" ]]
++	# XXX: For some reason, systemd-cgroup leads to us using the all-set
++	#      cpumask rather than the cpuset we configured?
++	[ -v RUNC_USE_SYSTEMD ] || [[ "$output" == $'Cpus_allowed_list:\t'"$first-$second" ]]
++
++	# Ditto for a cpuset that has no overlap with the original cpumask.
++	update_config '.linux.resources.cpu = {"mems": "0", "cpus": "'"$second"'"}'
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" run ctr
++	[ "$status" -eq 0 ]
++	[[ "$output" != $'Cpus_allowed_list:\t'"$first" ]]
++	# XXX: For some reason, systemd-cgroup leads to us using the all-set
++	#      cpumask rather than the cpuset we configured?
++	[ -v RUNC_USE_SYSTEMD ] || [[ "$output" == $'Cpus_allowed_list:\t'"$second" ]]
++}
++
++@test "runc exec [default CPU affinity should reset]" {
++	# We need to use RUNC_CMDLINE since taskset requires a proper binary, not a
++	# bash function (which is what runc and __runc are).
++	setup_runc_cmdline
++
++	first="$(first_cpu)"
++
++	# Running without cpuset should result in an affinity for all CPUs.
++	update_config '.process.args = [ "/bin/sleep", "infinity" ]'
++	update_config 'del(.linux.resources.cpu)'
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" run -d --console-socket "$CONSOLE_SOCKET" ctr3
++	[ "$status" -eq 0 ]
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" exec ctr3 grep -F Cpus_allowed_list: /proc/self/status
++	[ "$status" -eq 0 ]
++	[[ "$output" != $'Cpus_allowed_list:\t'"$first" ]]
++	[[ "$output" == $'Cpus_allowed_list:\t'"$INITIAL_CPU_MASK" ]]
++}
++
++@test "runc exec [default CPU affinity should reset to cgroup cpuset]" {
++	[ $EUID -ne 0 ] && requires rootless_cgroup
++	set_cgroups_path
++
++	# We need to use RUNC_CMDLINE since taskset requires a proper binary, not a
++	# bash function (which is what runc and __runc are).
++	setup_runc_cmdline
++
++	first="$(first_cpu)"
++	second="$((first + 1))" # Hacky; might not work in all environments.
++
++	# Running with a cpuset should result in an affinity that matches.
++	update_config '.process.args = [ "/bin/sleep", "infinity" ]'
++	update_config '.linux.resources.cpu = {"mems": "0", "cpus": "'"$first-$second"'"}'
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" run -d --console-socket "$CONSOLE_SOCKET" ctr
++	[ "$status" -eq 0 ]
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" exec ctr grep -F Cpus_allowed_list: /proc/self/status
++	[ "$status" -eq 0 ]
++	[[ "$output" != $'Cpus_allowed_list:\t'"$first" ]]
++	# XXX: For some reason, systemd-cgroup leads to us using the all-set
++	#      cpumask rather than the cpuset we configured?
++	[ -v RUNC_USE_SYSTEMD ] || [[ "$output" == $'Cpus_allowed_list:\t'"$first-$second" ]]
++
++	# Stop the container so we can reconfigure it.
++	runc delete -f ctr
++	[ "$status" -eq 0 ]
++
++	# Ditto for a cpuset that has no overlap with the original cpumask.
++	update_config '.linux.resources.cpu = {"mems": "0", "cpus": "'"$second"'"}'
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" run -d --console-socket "$CONSOLE_SOCKET" ctr
++	[ "$status" -eq 0 ]
++	sane_run taskset -c "$first" "${RUNC_CMDLINE[@]}" exec ctr grep -F Cpus_allowed_list: /proc/self/status
++	[ "$status" -eq 0 ]
++	[[ "$output" != $'Cpus_allowed_list:\t'"$first" ]]
++	# XXX: For some reason, systemd-cgroup leads to us using the all-set
++	#      cpumask rather than the cpuset we configured?
++	[ -v RUNC_USE_SYSTEMD ] || [[ "$output" == $'Cpus_allowed_list:\t'"$second" ]]
++}
