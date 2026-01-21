@@ -19,6 +19,8 @@ RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
+COPY patches patches
+RUN find patches -name "*.patch" -print0 | xargs -0 git apply --allow-empty
 RUN BUILDTAGS='seccomp selinux apparmor' GOEXPERIMENT='boringcrypto' make static
 RUN go-assert-static.sh runc
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
