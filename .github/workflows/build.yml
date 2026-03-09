@@ -36,7 +36,7 @@ jobs:
         echo "CVE-2025-52881" >> .trivyignore
 
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@0.35.0
       with:
         image-ref: rancher/hardened-runc:${{ env.TAG }}-amd64
         format: 'table'
@@ -84,7 +84,7 @@ jobs:
         echo "CVE-2025-52881" >> .trivyignore
     
     - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@0.19.0
+      uses: aquasecurity/trivy-action@0.35.0
       with:
         image-ref: rancher/hardened-runc:${{ env.TAG }}-arm64
         format: 'table'
