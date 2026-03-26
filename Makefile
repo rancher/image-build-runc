@@ -17,7 +17,7 @@ SRC ?= github.com/opencontainers/runc
 TAG ?= ${GITHUB_ACTION_TAG}
 
 ifeq ($(TAG),)
-TAG := v1.2.7$(BUILD_META)
+TAG := v1.4.1$(BUILD_META)
 endif
 
 ifeq (,$(filter %$(BUILD_META),$(TAG)))
