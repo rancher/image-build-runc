@@ -14,10 +14,10 @@ BUILD_META=-build$(shell date +%Y%m%d)
 ORG ?= rancher
 PKG ?= github.com/opencontainers/runc
 SRC ?= github.com/opencontainers/runc
-TAG ?= v1.1.8$(BUILD_META)
+TAG ?= ${GITHUB_ACTION_TAG}
 
-ifneq ($(DRONE_TAG),)
-	TAG := $(DRONE_TAG)
+ifeq ($(TAG),)
+TAG := v1.4.1$(BUILD_META)
 endif
 
 ifeq (,$(filter %$(BUILD_META),$(TAG)))
@@ -40,14 +40,17 @@ image-build:
 image-push:
 	docker push $(ORG)/hardened-runc:$(TAG)-$(ARCH)
 
-.PHONY: image-manifest
-image-manifest:
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest create --amend \
-		$(ORG)/hardened-runc:$(TAG) \
-		$(ORG)/hardened-runc:$(TAG)-$(ARCH)
-	DOCKER_CLI_EXPERIMENTAL=enabled docker manifest push \
-		$(ORG)/hardened-runc:$(TAG)
-
 .PHONY: image-scan
 image-scan:
 	trivy image --severity $(SEVERITIES) --no-progress --ignore-unfixed $(ORG)/hardened-runc:$(TAG)
+
+.PHONY: log
+log:
+	@echo "ARCH=$(ARCH)"
+	@echo "TAG=$(TAG:$(BUILD_META)=)"
+	@echo "ORG=$(ORG)"
+	@echo "PKG=$(PKG)"
+	@echo "SRC=$(SRC)"
+	@echo "BUILD_META=$(BUILD_META)"
+	@echo "K3S_ROOT_VERSION=$(K3S_ROOT_VERSION)"
+	@echo "UNAME_M=$(UNAME_M)"
