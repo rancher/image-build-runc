@@ -1,4 +1,4 @@
-ARG GO_IMAGE=rancher/hardened-build-base:v1.25.10b1
+ARG GO_IMAGE=rancher/hardened-build-base:v1.25.12b1
 FROM ${GO_IMAGE} as builder
 # setup required packages
 RUN set -x && \
@@ -19,6 +19,8 @@ RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
+COPY go-mod-overrides ./go-mod-overrides
+RUN go-mod-overrides.sh ./go-mod-overrides
 RUN BUILDTAGS='seccomp selinux apparmor' GOEXPERIMENT='boringcrypto' make static
 RUN go-assert-static.sh runc
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
