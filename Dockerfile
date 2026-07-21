@@ -1,5 +1,5 @@
 ARG GO_IMAGE=rancher/hardened-build-base:v1.25.12b1
-FROM ${GO_IMAGE} as builder
+FROM ${GO_IMAGE} AS builder
 # setup required packages
 RUN set -x && \
     apk --no-cache add \
