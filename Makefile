@@ -12,8 +12,6 @@ endif
 
 BUILD_META=-build$(shell date +%Y%m%d)
 ORG ?= rancher
-PKG ?= github.com/opencontainers/runc
-SRC ?= github.com/opencontainers/runc
 TAG ?= ${GITHUB_ACTION_TAG}
 
 ifeq ($(TAG),)
@@ -28,8 +26,6 @@ endif
 image-build:
 	docker build \
 		--pull \
-		--build-arg PKG=$(PKG) \
-		--build-arg SRC=$(SRC) \
 		--build-arg TAG=$(TAG:$(BUILD_META)=) \
                 --build-arg ARCH=$(ARCH) \
 		--tag $(ORG)/hardened-runc:$(TAG) \
@@ -49,8 +45,6 @@ log:
 	@echo "ARCH=$(ARCH)"
 	@echo "TAG=$(TAG:$(BUILD_META)=)"
 	@echo "ORG=$(ORG)"
-	@echo "PKG=$(PKG)"
-	@echo "SRC=$(SRC)"
 	@echo "BUILD_META=$(BUILD_META)"
 	@echo "K3S_ROOT_VERSION=$(K3S_ROOT_VERSION)"
 	@echo "UNAME_M=$(UNAME_M)"

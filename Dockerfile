@@ -1,5 +1,5 @@
 ARG GO_IMAGE=rancher/hardened-build-base:v1.25.12b1
-FROM ${GO_IMAGE} as builder
+FROM ${GO_IMAGE} AS builder
 # setup required packages
 RUN set -x && \
     apk --no-cache add \
@@ -12,10 +12,9 @@ RUN set -x && \
     make
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
-ARG SRC="github.com/opencontainers/runc"
 ARG TAG="v1.4.1"
 ARG TARGETARCH="amd64"
-RUN git clone --depth=1 https://${SRC}.git $GOPATH/src/${PKG}
+RUN git clone --depth=1 https://${PKG}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
