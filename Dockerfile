@@ -10,6 +10,12 @@ RUN set -x && \
     libseccomp-dev \
     libseccomp-static \
     make
+# Starting with runc v1.5, libpathrs is required. Since libpathrs is not available in the stable Alpine repositories, 
+# we need to use the edge community repository to install it.
+RUN set -x && \
+    apk add --no-cache \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
+    libpathrs-dev
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
 ARG TAG
