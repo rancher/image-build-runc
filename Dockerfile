@@ -12,7 +12,7 @@ RUN set -x && \
     make
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
-ARG TAG="v1.4.1"
+ARG TAG
 ARG TARGETARCH="amd64"
 RUN git clone --depth=1 https://${PKG}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
