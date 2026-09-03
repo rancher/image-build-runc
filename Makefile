@@ -15,7 +15,7 @@ ORG ?= rancher
 TAG ?= ${GITHUB_ACTION_TAG}
 
 ifeq ($(TAG),)
-TAG := v1.4.1$(BUILD_META)
+TAG := $(shell head -n1 TAG)$(BUILD_META)
 endif
 
 ifeq (,$(filter %$(BUILD_META),$(TAG)))
@@ -31,6 +31,12 @@ image-build:
 		--tag $(ORG)/hardened-runc:$(TAG) \
 		--tag $(ORG)/hardened-runc:$(TAG)-$(ARCH) \
 	.
+
+.PHONY: image-build-all
+image-build-all:
+	@for tag in $(shell cat TAG); do \
+		TAG=$$tag$(BUILD_META) $(MAKE) image-build; \
+	done
 
 .PHONY: image-push
 image-push:
