@@ -13,7 +13,7 @@ RUN set -x && \
 # setup the build
 ARG PKG="github.com/opencontainers/runc"
 ARG TAG
-ARG TARGETARCH="amd64"
+ARG TARGETARCH
 RUN git clone --depth=1 https://${PKG}.git $GOPATH/src/${PKG}
 WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
