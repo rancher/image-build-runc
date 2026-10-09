@@ -1,3 +1,7 @@
-# golang.org/x/net: CVE-2026-46600, CVE-2026-33814, CVE-2026-39821.
-# Drop once upstream runc requires golang.org/x/net >= v0.56.0.
--replace golang.org/x/net=golang.org/x/net@v0.56.0
+# golang.org/x/net: CVE-2026-97032, CVE-2026-78659, CVE-2026-78663, CVE-2026-78669.
+# Drop once upstream runc requires golang.org/x/net >= v0.60.0.
+-replace golang.org/x/net=golang.org/x/net@v0.60.0
+
+# github.com/moby/sys/user: CVE-2026-61801
+# Drop once upstream runc requires github.com/moby/sys/user >= v0.4.1.
+-replace github.com/moby/sys/user=github.com/moby/sys/user@v0.4.1
