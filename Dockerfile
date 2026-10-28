@@ -25,7 +25,7 @@ WORKDIR $GOPATH/src/${PKG}
 RUN git fetch --all --tags --prune
 RUN git checkout tags/${TAG} -b ${TAG}
 COPY go-mod-overrides ./go-mod-overrides
-RUN go-mod-overrides.sh ./go-mod-overrides
+RUN go-mod-replacer -local ./go-mod-overrides
 RUN BUILDTAGS='seccomp selinux apparmor' GOEXPERIMENT='boringcrypto' make static
 RUN go-assert-static.sh runc
 RUN if [ "${TARGETARCH}" = "amd64" ]; then \
